@@ -7,7 +7,11 @@ contract RockPaperScissors {
     struct BetBox {
        address player1;
        address player2;
-       uint amount;
+       uint betPlayer1;
+       uint betPlayer2;
+       uint amountPlayer1;
+       uint amountPlayer2;
+       uint sumAmounts; 
        uint deadline; 
     }
     
@@ -21,17 +25,25 @@ contract RockPaperScissors {
         owner = msg.sender;
     }
     
-    function createBet(bytes32 bet1, bytes32 bet2) public pure returns(bytes32 hashedBet) {
-        return keccak256(bet1, bet2);
+    function hashBet(bytes32 passPlayer1, bytes32 passPlayer2) public pure returns(bytes32 hashedBet) {
+        return keccak256(passPlayer1, passPlayer2);
     }
     
-    function resolveBet(bytes32 bet1, bytes32 bet2, address player1, address player2) public {
-        bytes32 hashedBet = createBet(bet1, bet2);
-        require(wagerStructs[hashedBet].player1 == player1);
-        require(wagerStructs[hashedBet].player2 == player2);
-        if(hashedBet = 0x62b68a23e06d3238a6c5fd1b3f1ae7a7a7131a02fb0185d6ec4f5c529a1ad3ad) {
+    function playBet(bytes32 passPlayer1, bytes32 passPlayer2, uint betPlayer1, uint betPlayer2) public returns(bool success) {
+        bytes32 hashedBet = hashBet(passPlayer1, passPlayer2);
+        BetBox memory b = wagerStructs[hashedBet];
+        require(b.amountPlayer1 + b.amountPlayer2 == b.sumAmounts);
+        if (b.player1 == b.player2) revert();
+        if (b.betPlayer1 == b.betPlayer2) revert();
+        //my idea here was to assign numbers to the different betting options, (eg.rock = 1, scissors = 2, paper = 3) 
+        //then start comparing the bets to find the winner but seems I am not using the right expression, or maybe this 
+        //is not the right strategy at all?
+        if (b.betPlayer1=1 && b.betPlayer2=2) {
+            b.player1.transfer(b.sumAmounts);
         }
+        
         //Log
         //return
+
     }
 }
