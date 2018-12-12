@@ -11,50 +11,56 @@ contract RockPaperScissors {
     struct BetBox {
        address player1;
        address player2;
+       address winner;
        Bet betPlayer1;
        Bet betPlayer2;
        uint amountPlayer1;
        uint amountPlayer2;
-       uint sumAmounts; 
+       uint amountWinner;
        uint deadline; 
     }
     
-    // for every uint there is a BetBox and those namespaces (struct) will conform a mapping named wagerStructs
+    struct WinnerBox {
+        address winner;
+        uint amountWinner;
+    }
+    
+    // for every uint there is a BetBox and those namespaces (struct) will conform a mapping named betStructs
     mapping (bytes32 => BetBox) public betStructs; 
+    mapping (bytes32 => WinnerBox) public winnerStructs;
     
     event LogCreateBet(address caller, uint amount, uint duration);
-    event LogSeeBet(address caller, uint amount, uint now);
+    event LogJoinBet(address caller, uint amount, uint now);
+    event LogAwardWinner (address caller, address winner);
     event LogAwardBet(uint amount, address winner);
     
     function RockPaperScissors() public {
         owner = msg.sender;
     }
     
-    function gethashToBet(bytes32 passPlayer1, bytes32 passPlayer2) public pure returns(bytes32 hashToBet) {
+    function getHashToBet(bytes32 passPlayer1, bytes32 passPlayer2) public pure returns(bytes32 hashToBet) {
         return keccak256(passPlayer1, passPlayer2);
     }
     
     function createBet(bytes32 hashToBet, address player2, uint duration) public payable returns(bool success) {
         require(betStructs[hashToBet].amountPlayer1 == 0);
         require(betStructs[hashToBet].player1 != player2); 
+        betStructs[hashToBet].player1 = msg.sender;
         betStructs[hashToBet].player2 = player2;
         betStructs[hashToBet].deadline = duration + block.number;
         betStructs[hashToBet].amountPlayer1 = msg.value;
-        betStructs[hashToBet].sumAmounts = betStructs[hashToBet].amountPlayer1 + betStructs[hashToBet].amountPlayer2;
         LogCreateBet(msg.sender, msg.value, duration);
         msg.sender.transfer(msg.value);
         return true;
     }
     
-    function seeBet(bytes32 hashToBet, address player1) public payable returns(bool success) {
+    function joinBet(bytes32 hashToBet) public payable returns(bool success) {
         require(betStructs[hashToBet].amountPlayer2 == 0);
         require(betStructs[hashToBet].deadline < now);
         require(betStructs[hashToBet].player2 == msg.sender); 
         require(betStructs[hashToBet].amountPlayer1 == msg.value);
         betStructs[hashToBet].amountPlayer2 = msg.value;
-        betStructs[hashToBet].sumAmounts = betStructs[hashToBet].amountPlayer1 + betStructs[hashToBet].amountPlayer2;
-        betStructs[hashToBet].player1 = player1;
-        LogSeeBet(msg.sender, msg.value, now);
+        LogJoinBet(msg.sender, msg.value, now);
         msg.sender.transfer(msg.value);
         return true;
     }
@@ -75,19 +81,26 @@ contract RockPaperScissors {
             (betPlayer2 == Bet.SCISSORS && betPlayer1 == Bet.PAPER)) return 2;    
     }
     
-    function gethashToAward(bytes32 passOwner, bytes32 passWinner) public pure returns(bytes32 hashToAward) {
+    function getHashToAward(bytes32 passOwner, bytes32 passWinner) public pure returns(bytes32 hashToAward) {
         return keccak256(passOwner, passWinner);
     }
     
-//this last function compiles but it throws an error when testing it in remix. I can not see the reason
+    function awardWinner(bytes32 hashToAward, address winner) public returns(bool success) {
+        require(owner == msg.sender);
+        winnerStructs[hashToAward].winner = winner;
+        LogAwardWinner(msg.sender, winner);
+        return true;
+    }
 
-    function awardBet(bytes32 passOwner, bytes32 passWinner, bytes32 hashToBet) public returns(bool success) {
-        bytes32 hashToAward = gethashToBet(passOwner, passWinner);
-        require(hashToAward != hashToBet);
-        require(owner != msg.sender);
-        uint amount = betStructs[hashToBet].sumAmounts;
+    function awardBetToWinner(bytes32 hashToAward, bytes32 hashToBet) public returns(bool success) {
+        require(winnerStructs[hashToAward].winner == msg.sender);
+        betStructs[hashToBet].amountWinner = betStructs[hashToBet].amountPlayer1 + betStructs[hashToBet].amountPlayer2;
+        uint amount = betStructs[hashToBet].amountWinner;
         LogAwardBet(amount, msg.sender);
         msg.sender.transfer(amount);
         return true;    
     }
 }
+
+//pending1: assign Winner to betStructs box and assign amountWinner to winnerStructs box
+//pending2: create a cancelBet() to return money to players if there is a tie. 
