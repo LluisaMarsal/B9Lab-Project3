@@ -59,6 +59,7 @@ contract RockPaperScissors {
         require(betStructs[hashToBet].deadline < now);
         require(betStructs[hashToBet].player2 == msg.sender); 
         require(betStructs[hashToBet].amountPlayer1 == msg.value);
+        if (betStructs[hashToBet].amountPlayer1 != betStructs[hashToBet].amountPlayer2) revert();
         betStructs[hashToBet].amountPlayer2 = msg.value;
         LogJoinBet(msg.sender, msg.value, now);
         msg.sender.transfer(msg.value);
@@ -78,7 +79,8 @@ contract RockPaperScissors {
             (betPlayer2 == Bet.SCISSORS && betPlayer1 == Bet.PAPER)||
             (betPlayer2 == Bet.ROCK && betPlayer1 == Bet.SCISSORS)||
             (betPlayer2 == Bet.PAPER && betPlayer1 == Bet.ROCK)||
-            (betPlayer2 == Bet.SCISSORS && betPlayer1 == Bet.PAPER)) return 2;    
+            (betPlayer2 == Bet.SCISSORS && betPlayer1 == Bet.PAPER)) return 2;  
+        assert(false, "We should never have reached here");
     }
     
     function getHashToAward(bytes32 passOwner, bytes32 passWinner) public pure returns(bytes32 hashToAward) {
