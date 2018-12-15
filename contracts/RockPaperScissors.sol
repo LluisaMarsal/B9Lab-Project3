@@ -2,7 +2,7 @@ pragma solidity ^0.4.19;
  
 contract RockPaperScissors {
     
-    address public owner;
+    address public bot;
     //uint winningPlayer returns 1, winner is player1
     //uint winningPlayer returns 2, winner is player2
     
@@ -14,6 +14,7 @@ contract RockPaperScissors {
        address winner;
        Bet betPlayer1;
        Bet betPlayer2;
+       uint repeatBetPlayer1;
        uint amountPlayer1;
        uint amountPlayer2;
        uint amountWinner;
@@ -31,11 +32,12 @@ contract RockPaperScissors {
     
     event LogCreateBet(address caller, uint amount, uint duration);
     event LogJoinBet(address caller, uint amount, uint now);
+    event LogPlayBet(address caller, uint betPlayer1, uint now);
     event LogAwardWinner (address caller, address winner);
     event LogAwardBet(uint amount, address winner);
     
     function RockPaperScissors() public {
-        owner = msg.sender;
+        bot = msg.sender;
     }
     
     function getHashToBet(bytes32 passPlayer1, bytes32 passPlayer2) public pure returns(bytes32 hashToBet) {
@@ -55,18 +57,18 @@ contract RockPaperScissors {
     }
     
     function joinBet(bytes32 hashToBet) public payable returns(bool success) {
+        if(betStructs[hashToBet].amountPlayer1 == 0 && betStructs[hashToBet].amountPlayer2 == 0) revert();
         require(betStructs[hashToBet].amountPlayer2 == 0);
         require(betStructs[hashToBet].deadline < now);
         require(betStructs[hashToBet].player2 == msg.sender); 
         require(betStructs[hashToBet].amountPlayer1 == msg.value);
-        if (betStructs[hashToBet].amountPlayer1 != betStructs[hashToBet].amountPlayer2) revert();
         betStructs[hashToBet].amountPlayer2 = msg.value;
         LogJoinBet(msg.sender, msg.value, now);
         msg.sender.transfer(msg.value);
         return true;
     }
     
-    function playBet(Bet betPlayer1, Bet betPlayer2) public pure returns(uint winningPlayer) {
+    function playBet(Bet betPlayer1, uint repeatBetPlayer1, Bet betPlayer2, bytes32 hashToBet) public returns(uint winningPlayer) {
         if (betPlayer1 == betPlayer2) revert();
         if ((betPlayer1 == Bet.PAPER && betPlayer2 == Bet.ROCK)||
             (betPlayer1 == Bet.ROCK && betPlayer2 == Bet.SCISSORS)||
@@ -80,7 +82,10 @@ contract RockPaperScissors {
             (betPlayer2 == Bet.ROCK && betPlayer1 == Bet.SCISSORS)||
             (betPlayer2 == Bet.PAPER && betPlayer1 == Bet.ROCK)||
             (betPlayer2 == Bet.SCISSORS && betPlayer1 == Bet.PAPER)) return 2;  
-        assert(false, "We should never have reached here");
+        require(winningPlayer == 1 || winningPlayer == 2); 
+        betStructs[hashToBet].repeatBetPlayer1 = repeatBetPlayer1;
+        LogPlayBet(msg.sender, repeatBetPlayer1, now);
+        msg.sender.transfer(repeatBetPlayer1);
     }
     
     function getHashToAward(bytes32 passOwner, bytes32 passWinner) public pure returns(bytes32 hashToAward) {
@@ -88,7 +93,7 @@ contract RockPaperScissors {
     }
     
     function awardWinner(bytes32 hashToAward, address winner) public returns(bool success) {
-        require(owner == msg.sender);
+        require(bot == msg.sender);
         winnerStructs[hashToAward].winner = winner;
         LogAwardWinner(msg.sender, winner);
         return true;
