@@ -30,11 +30,11 @@ contract RockPaperScissors {
     mapping (bytes32 => BetBox) public betStructs; 
     mapping (bytes32 => WinnerBox) public winnerStructs;
     
-    event LogCreateBet(address caller, uint amount, uint duration);
-    event LogJoinBet(address caller, uint amount, uint duration);
-    event LogPlayBet(address caller, uint betPlayer1, uint duration);
-    event LogAwardWinner (address caller, address winner, uint duration);
-    event LogAwardBet(uint amount, address winner, uint duration);
+    event LogCreateBet(address caller, uint amount, uint numberOfBlocks);
+    event LogJoinBet(address caller, uint amount, uint blockNumber);
+    event LogPlayBet(address caller, uint betPlayer1, uint blockNumber);
+    event LogAwardWinner (address caller, address winner, uint blockNumber);
+    event LogAwardBet(uint amount, address winner, uint blockNumber);
     
     function RockPaperScissors() public {
         owner = msg.sender;
@@ -44,14 +44,14 @@ contract RockPaperScissors {
         return keccak256(passPlayer1, passPlayer2);
     }
     
-    function createBet(bytes32 hashToBet, address player2, uint duration) public payable returns(bool success) {
+    function createBet(bytes32 hashToBet, address player2, uint numberOfBlocks) public payable returns(bool success) {
         require(betStructs[hashToBet].amountPlayer1 == 0);
         require(betStructs[hashToBet].player1 != player2); 
         betStructs[hashToBet].player1 = msg.sender;
         betStructs[hashToBet].player2 = player2;
-        betStructs[hashToBet].deadline = block.number + duration;
+        betStructs[hashToBet].deadline = block.number + numberOfBlocks;
         betStructs[hashToBet].amountPlayer1 = msg.value;
-        LogCreateBet(msg.sender, msg.value, duration);
+        LogCreateBet(msg.sender, msg.value, numberOfBlocks);
         return true;
     }
     
@@ -61,7 +61,7 @@ contract RockPaperScissors {
         require(betStructs[hashToBet].player2 == msg.sender); 
         require(betStructs[hashToBet].amountPlayer1 == msg.value);
         betStructs[hashToBet].amountPlayer2 = msg.value;
-        LogJoinBet(msg.sender, msg.value, now);
+        LogJoinBet(msg.sender, msg.value, block.number);
         return true;
     }
     
@@ -101,11 +101,13 @@ contract RockPaperScissors {
         require(winnerStructs[hashToAward].winner == msg.sender);
         betStructs[hashToBet].amountWinner = betStructs[hashToBet].amountPlayer1 + betStructs[hashToBet].amountPlayer2;
         uint amount = betStructs[hashToBet].amountWinner;
+        betStructs[hashToBet].amountWinner = 0;
         LogAwardBet(amount, msg.sender, block.number);
         msg.sender.transfer(amount);
         return true;    
     }
 }
+
 
 //pending1: assign Winner to betStructs box and assign amountWinner to winnerStructs box
 //pending2: create a cancelBet() to return money to players if there is a tie. 
