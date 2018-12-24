@@ -14,11 +14,11 @@ contract RockPaperScissors {
        address winner;
        Bet betPlayer1;
        Bet betPlayer2;
-       uint repeatBetPlayer1;
        uint amountPlayer1;
        uint amountPlayer2;
        uint amountWinner;
        uint deadline; 
+       uint newDeadline;
     }
     
     struct WinnerBox {
@@ -31,45 +31,65 @@ contract RockPaperScissors {
     mapping (bytes32 => WinnerBox) public winnerStructs;
     
     event LogCreateBet(address caller, uint amount, uint numberOfBlocks);
-    event LogJoinBet(address caller, uint amount, uint blockNumber);
-    event LogPlayBet(address caller, uint betPlayer1, uint blockNumber);
-    event LogAwardWinner (address caller, address winner, uint blockNumber);
-    event LogAwardBet(uint amount, address winner, uint blockNumber);
+    event LogJoinBet(address caller, uint amount, uint newNumberOfBlocks);
+    event LogPlayer1Move(address caller, uint betPlayer1);
+    event LogPlayer2Move(address caller, uint betPlayer2);
+    event LogPlayBet(address caller, uint betPlayer1, uint betPlayer2);
+    event LogAwardWinner (address caller, address winner);
+    event LogAwardBet(uint amount, address winner);
     
     function RockPaperScissors() public {
         owner = msg.sender;
     }
     
-    function getHashToBet(bytes32 passPlayer1, bytes32 passPlayer2) public pure returns(bytes32 hashToBet) {
+    function getGameID(bytes32 passPlayer1, bytes32 passPlayer2) public pure returns(bytes32 gameID) {
         return keccak256(passPlayer1, passPlayer2);
     }
     
-    function createBet(bytes32 hashToBet, address player2, uint numberOfBlocks) public payable returns(bool success) {
-        require(betStructs[hashToBet].amountPlayer1 == 0);
-        require(betStructs[hashToBet].player1 != player2); 
-        betStructs[hashToBet].player1 = msg.sender;
-        betStructs[hashToBet].player2 = player2;
-        betStructs[hashToBet].deadline = block.number + numberOfBlocks;
-        betStructs[hashToBet].amountPlayer1 = msg.value;
+    function createBet(bytes32 passPlayer1, bytes32 gameID, address player2, uint numberOfBlocks) public payable returns(bool success) {
+        require(betStructs[gameID].amountPlayer1 == 0);
+        require(betStructs[gameID].player1 != player2); 
+        betStructs[gameID].player1 = msg.sender;
+        betStructs[gameID].player2 = player2;
+        betStructs[gameID].deadline = block.number + numberOfBlocks;
+        betStructs[gameID].amountPlayer1 = msg.value;
         LogCreateBet(msg.sender, msg.value, numberOfBlocks);
         return true;
     }
     
-    function joinBet(bytes32 hashToBet) public payable returns(bool success) {
-        require(betStructs[hashToBet].amountPlayer2 == 0);
-        require(betStructs[hashToBet].deadline > block.number);
-        require(betStructs[hashToBet].player2 == msg.sender); 
-        require(betStructs[hashToBet].amountPlayer1 == msg.value);
-        betStructs[hashToBet].amountPlayer2 = msg.value;
-        LogJoinBet(msg.sender, msg.value, block.number);
+    function joinBet(bytes32 passPlayer2, bytes32 gameID, uint newNumberOfBlocks) public payable returns(bool success) {
+        require(betStructs[gameID].amountPlayer2 == 0);
+        require(betStructs[gameID].deadline > block.number);
+        require(betStructs[gameID].player2 == msg.sender); 
+        require(betStructs[gameID].amountPlayer1 == msg.value);
+        betStructs[gameID].newDeadline = block.number + newNumberOfBlocks;
+        betStructs[gameID].amountPlayer2 = msg.value;
+        LogJoinBet(msg.sender, msg.value, newNumberOfBlocks);
         return true;
     }
     
-    function playBet(Bet betPlayer1, uint repeatBetPlayer1, Bet betPlayer2, bytes32 passPlayer1, bytes32 passPlayer2) public returns(uint winningPlayer) {
-        bytes32 hashToBet = getHashToBet(passPlayer1, passPlayer2);
-        betStructs[hashToBet].repeatBetPlayer1 = repeatBetPlayer1;
-        LogPlayBet(msg.sender, repeatBetPlayer1, block.number);
-        msg.sender.transfer(repeatBetPlayer1);
+    function player1Move(bytes32 passPlayer1, bytes32 gameID, Bet betPlayer1) public returns(bool success) {
+        require(betStructs[gameID].player1 == msg.sender);
+        require(betStructs[gameID].betPlayer1 == 0 || betStructs[gameID].betPlayer1 == 1 || betStructs[gameID].betPlayer1 == 2);
+        require(betStructs[gameID].newDeadline > block.number);
+        LogPlayer1Move(msg.sender, betPlayer1);
+        return true;
+    }
+    
+    function player2Move(bytes32 passPlayer2, bytes32 gameID, Bet betPlayer2) public returns(bool success) {
+        require(betStructs[gameID].player2 == msg.sender);
+        require(betStructs[gameID].betPlayer2 == 0 || betStructs[gameID].betPlayer2 == 1 || betStructs[gameID].betPlayer2 == 2);
+        require(betStructs[gameID].newDeadline > block.number);
+        LogPlayer2Move(msg.sender, betPlayer2);
+        return true;
+    }
+    
+    function playBet(bytes32 passPlayer1, bytes32 passPlayer2) public view returns(uint winningPlayer) {
+        bytes32 gameID = getGameID(passPlayer1, passPlayer2);
+        require(owner == msg.sender);
+        betStructs[gameID].betPlayer1 = Bet.betPlayer1;
+        betStructs[gameID].betPlayer2 = Bet.betPlayer2;
+        LogPlayBet(msg.sender, Bet.betPlayer1, Bet.betPlayer2);
         if (betPlayer1 == betPlayer2) revert();
         if ((betPlayer1 == Bet.PAPER && betPlayer2 == Bet.ROCK)||
             (betPlayer1 == Bet.ROCK && betPlayer2 == Bet.SCISSORS)||
@@ -93,16 +113,17 @@ contract RockPaperScissors {
     function awardWinner(bytes32 hashToAward, address winner) public returns(bool success) {
         require(owner == msg.sender);
         winnerStructs[hashToAward].winner = winner;
-        LogAwardWinner(msg.sender, winner, block.number);
+        LogAwardWinner(msg.sender, winner);
         return true;
     }
 
-    function awardBetToWinner(bytes32 hashToAward, bytes32 hashToBet) public returns(bool success) {
+    function awardBetToWinner(bytes32 hashToAward, bytes32 gameID) public returns(bool success) {
         require(winnerStructs[hashToAward].winner == msg.sender);
-        betStructs[hashToBet].amountWinner = betStructs[hashToBet].amountPlayer1 + betStructs[hashToBet].amountPlayer2;
-        uint amount = betStructs[hashToBet].amountWinner;
-        betStructs[hashToBet].amountWinner = 0;
-        LogAwardBet(amount, msg.sender, block.number);
+        uint amount = betStructs[gameID].amountWinner;
+        betStructs[gameID].amountWinner = betStructs[gameID].amountPlayer1 + betStructs[gameID].amountPlayer2;
+        require(amount != 0);
+        betStructs[gameID].amountWinner = 0;
+        LogAwardBet(amount, msg.sender);
         msg.sender.transfer(amount);
         return true;    
     }
