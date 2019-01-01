@@ -25,7 +25,7 @@ contract RockPaperScissors {
     mapping (bytes32 => BetBox) public betStructs; 
     
     event LogCreateBet(address caller, uint amount, uint numberOfBlocks);
-    event LogJoinBet(address caller, uint amount);
+    event LogJoinBet(address caller, uint amount, uint nextNumberOfBlocks);
     event LogPlayer1Move(address caller, Bet betPlayer1);
     event LogPlayer2Move(address caller, Bet betPlayer2);
     event LogPlayBet(address caller, Bet betPlayer1, Bet betPlayer2);
@@ -42,7 +42,7 @@ contract RockPaperScissors {
     
     function createBet(bytes32 passPlayer1, address player2, uint numberOfBlocks) public payable returns(bool success) {
         require(betStructs[passPlayer1].amountPlayer1 == 0);
-        require(betStructs[passPlayer1].player1 != player2); 
+        require(msg.sender != player2); 
         betStructs[passPlayer1].player1 = msg.sender;
         betStructs[passPlayer1].player2 = player2;
         betStructs[passPlayer1].joinDeadline = block.number + numberOfBlocks;
@@ -51,18 +51,18 @@ contract RockPaperScissors {
         return true;
     }
     
-    function joinBet(bytes32 passPlayer1) public payable returns(bool success) {
+    function joinBet(bytes32 passPlayer1, uint nextNumberOfBlocks) public payable returns(bool success) {
         require(betStructs[passPlayer1].amountPlayer2 == 0);
         require(betStructs[passPlayer1].joinDeadline > block.number);
         require(betStructs[passPlayer1].player2 == msg.sender); 
         require(betStructs[passPlayer1].amountPlayer1 == msg.value);
-        betStructs[passPlayer1].playersNextMoveDeadline = block.number + 2;
+        betStructs[passPlayer1].playersNextMoveDeadline = block.number + nextNumberOfBlocks;
         betStructs[passPlayer1].amountPlayer2 = msg.value;
-        LogJoinBet(msg.sender, msg.value);
+        LogJoinBet(msg.sender, msg.value, nextNumberOfBlocks);
         return true;
     }
     
-    function player1Move(bytes32 passPlayer1, Bet betPlayer1) public returns(bool success) {
+    function player1Move(bytes32 passPlayer1, Bet betPlayer1) internal returns(bool success) {
         require(betStructs[passPlayer1].player1 == msg.sender);
         require(betStructs[passPlayer1].betPlayer1 == Bet.ROCK || betStructs[passPlayer1].betPlayer1 == Bet.PAPER || betStructs[passPlayer1].betPlayer1 == Bet.SCISSORS);
         require(betStructs[passPlayer1].playersNextMoveDeadline > block.number);
@@ -70,7 +70,7 @@ contract RockPaperScissors {
         return true;
     }
     
-    function player2Move(bytes32 passPlayer1, Bet betPlayer2) public returns(bool success) {
+    function player2Move(bytes32 passPlayer1, Bet betPlayer2) internal returns(bool success) {
         require(betStructs[passPlayer1].player2 == msg.sender);
         require(betStructs[passPlayer1].betPlayer2 == Bet.ROCK || betStructs[passPlayer1].betPlayer2 == Bet.PAPER || betStructs[passPlayer1].betPlayer2 == Bet.SCISSORS);
         require(betStructs[passPlayer1].playersNextMoveDeadline > block.number);
@@ -109,8 +109,8 @@ contract RockPaperScissors {
     function awardBetToWinner(bytes32 gameID, bytes32 passPlayer1, bytes32 passPlayer2) public returns(bool success) {
         gameID = getGameID(passPlayer1, passPlayer2);
         require(owner == msg.sender);
-        uint amount = betStructs[passPlayer1].amountWinner;
         betStructs[passPlayer1].amountWinner = betStructs[passPlayer1].amountPlayer1 + betStructs[passPlayer1].amountPlayer2;
+        uint amount = betStructs[passPlayer1].amountWinner;
         require(amount != 0);
         betStructs[passPlayer1].amountWinner = 0;
         LogAwardBet(amount, msg.sender);
