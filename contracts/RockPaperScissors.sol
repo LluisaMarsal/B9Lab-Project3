@@ -3,6 +3,8 @@ pragma solidity ^0.4.19;
 contract RockPaperScissors {
     
     address private owner;
+    uint constant maxNumberOfBlocks = 1 days / 15;
+    uint constant minNumberOfBlocks = 1 hours / 15;
     uint constant maxNextNumberOfBlocks = 1 days / 15;
     uint constant minNextNumberOfBlocks = 1 hours / 15;
     //if uint winningPlayer in playBet() returns 1, winner is player1
@@ -43,8 +45,12 @@ contract RockPaperScissors {
     }
     
     function createBet(bytes32 gameID, address player2, uint numberOfBlocks) public payable returns(bool success) {
+//the following is to make sure no one overwrites the game
+        require(betStructs[gameID].player1 == 0);
         require(betStructs[gameID].amountPlayer1 == 0);
         require(msg.sender != player2); 
+        require(numberOfBlocks < maxNumberOfBlocks);
+        require(numberOfBlocks > minNumberOfBlocks);
         betStructs[gameID].player1 = msg.sender;
         betStructs[gameID].player2 = player2;
         betStructs[gameID].joinDeadline = block.number + numberOfBlocks;
@@ -58,8 +64,8 @@ contract RockPaperScissors {
         require(betStructs[gameID].joinDeadline > block.number);
         require(betStructs[gameID].player2 == msg.sender); 
         require(betStructs[gameID].amountPlayer1 == msg.value);
-        require(nextNumberOfBlocks < 1 days / 15);
-        require(nextNumberOfBlocks > 1 hours / 15);
+        require(nextNumberOfBlocks < maxNextNumberOfBlocks);
+        require(nextNumberOfBlocks > minNextNumberOfBlocks);
         betStructs[gameID].joinDeadline = 0;
         betStructs[gameID].playersNextMoveDeadline = block.number + nextNumberOfBlocks;
         betStructs[gameID].amountPlayer2 = msg.value;
@@ -70,7 +76,6 @@ contract RockPaperScissors {
     function player1Move(bytes32 gameID, Bet betPlayer1) public returns(bool success) {
         require(betStructs[gameID].player1 == msg.sender);
         require(Bet(betPlayer1) == Bet.ROCK || Bet(betPlayer1) == Bet.PAPER || Bet(betPlayer1) == Bet.SCISSORS);
-        require(Bet(betPlayer1) != Bet.NULL); 
         require(betStructs[gameID].playersNextMoveDeadline > block.number);
         betStructs[gameID].betPlayer1 = Bet(betPlayer1);
         LogPlayer1Move(msg.sender, betPlayer1);
@@ -80,7 +85,6 @@ contract RockPaperScissors {
     function player2Move(bytes32 gameID, Bet betPlayer2) public returns(bool success) {
         require(betStructs[gameID].player2 == msg.sender);
         require(Bet(betPlayer2) == Bet.ROCK || Bet(betPlayer2) == Bet.PAPER || Bet(betPlayer2) == Bet.SCISSORS);
-        require(Bet(betPlayer2) != Bet.NULL); 
         require(betStructs[gameID].playersNextMoveDeadline > block.number);
         betStructs[gameID].betPlayer2 = Bet(betPlayer2);
         LogPlayer2Move(msg.sender, betPlayer2);
@@ -105,7 +109,7 @@ contract RockPaperScissors {
     }
     
     function awardWinner(bytes32 gameID, address winner) public returns(bool success) {
-        require(owner == msg.sender);
+        require(winner == msg.sender);
         betStructs[gameID].winner = winner;
         betStructs[gameID].playersNextMoveDeadline = 0;
         LogAwardWinner(msg.sender, winner);
