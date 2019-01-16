@@ -91,7 +91,8 @@ contract RockPaperScissors {
         return true;
     }
     
-    function playBet(bytes32 gameID) public view returns(uint winningPlayer) {
+    function playBet(bytes32 passPlayer1, bytes32 passPlayer2) public view returns(uint winningPlayer) {
+        bytes32 gameID = getGameID(passPlayer1, passPlayer2);
         if (betStructs[gameID].betPlayer1 == betStructs[gameID].betPlayer2) revert();
         if ((betStructs[gameID].betPlayer1 == Bet.PAPER && betStructs[gameID].betPlayer2 == Bet.ROCK)||
             (betStructs[gameID].betPlayer1 == Bet.ROCK && betStructs[gameID].betPlayer2 == Bet.SCISSORS)||
@@ -108,17 +109,24 @@ contract RockPaperScissors {
         assert(false);
     }
     
-    function awardWinner(bytes32 gameID, address winner) public returns(bool success) {
-        require(winner == msg.sender);
-        betStructs[gameID].winner = winner;
+    function awardWinner(bytes32 passPlayer1, bytes32 passPlayer2) public returns(bool success) {
+        uint winningPlayer = playBet(passPlayer1, passPlayer2);
+        bytes32 gameID;
+        if (winningPlayer == 1) {
+            winner = betStructs[gameID].player1;
+        }
+        if (winningPlayer == 2) {
+            winner = betStructs[gameID].player2;
+        }
+        address winner = betStructs[gameID].winner;
         betStructs[gameID].playersNextMoveDeadline = 0;
         LogAwardWinner(msg.sender, winner);
         return true;
     }
 
-    function awardBetToWinner(bytes32 passPlayer1, bytes32 passPlayer2) public returns(bool success) {
-        bytes32 gameID = getGameID(passPlayer1, passPlayer2);
-        betStructs[gameID].amountWinner = betStructs[passPlayer1].amountPlayer1 + betStructs[passPlayer1].amountPlayer2;
+    function awardBetToWinner(bytes32 gameID) public returns(bool success) {
+        require(betStructs[gameID].winner == msg.sender);
+        betStructs[gameID].amountWinner = betStructs[gameID].amountPlayer1 + betStructs[gameID].amountPlayer2;
         uint amount = betStructs[gameID].amountWinner;
         require(amount != 0);
         betStructs[gameID].amountWinner = 0;
