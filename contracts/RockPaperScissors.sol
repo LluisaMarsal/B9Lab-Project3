@@ -112,13 +112,13 @@ contract RockPaperScissors {
     function awardWinner(bytes32 passPlayer1, bytes32 passPlayer2) public returns(bool success) {
         uint winningPlayer = playBet(passPlayer1, passPlayer2);
         bytes32 gameID;
+        address winner;
         if (winningPlayer == 1) {
             winner = betStructs[gameID].player1;
-        }
-        if (winningPlayer == 2) {
+        } else {
             winner = betStructs[gameID].player2;
-        }
-        address winner = betStructs[gameID].winner;
+        } 
+        betStructs[gameID].winner = winner;
         betStructs[gameID].playersNextMoveDeadline = 0;
         LogAwardWinner(msg.sender, winner);
         return true;
