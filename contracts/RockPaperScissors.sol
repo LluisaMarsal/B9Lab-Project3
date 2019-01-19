@@ -30,8 +30,6 @@ contract RockPaperScissors {
     
     event LogCreateBet(address caller, uint amount, uint numberOfBlocks);
     event LogJoinBet(address caller, uint amount, uint nextNumberOfBlocks);
-    event LogPlayer1Move(address caller, Bet betPlayer1);
-    event LogPlayer2Move(address caller, Bet betPlayer2);
     event LogPlayBet(address caller, Bet betPlayer1, Bet betPlayer2);
     event LogAwardWinner (address caller, address winner);
     event LogAwardBet(uint amount, address winner);
@@ -73,21 +71,44 @@ contract RockPaperScissors {
         return true;
     }
     
-    function player1Move(bytes32 gameID, Bet betPlayer1) public returns(bool success) {
+    function hashPlayer1Move(bytes32 passPlayer1, Bet betPlayer1) public pure returns(bytes32 hashedPlayer1Move) {
+        return keccak256(passPlayer1, betPlayer1);
+    }
+    
+    function player1Move(bytes32 passPlayer1, Bet betPlayer1) public view returns(uint) {
+        bytes32 hashedPlayer1Move = hashPlayer1Move(passPlayer1, betPlayer1);
+        bytes32 gameID;
         require(betStructs[gameID].player1 == msg.sender);
         require(Bet(betPlayer1) == Bet.ROCK || Bet(betPlayer1) == Bet.PAPER || Bet(betPlayer1) == Bet.SCISSORS);
         require(betStructs[gameID].playersNextMoveDeadline > block.number);
-        betStructs[gameID].betPlayer1 = Bet(betPlayer1);
-        LogPlayer1Move(msg.sender, betPlayer1);
-        return true;
+        return Bet;
     }
     
-    function player2Move(bytes32 gameID, Bet betPlayer2) public returns(bool success) {
+    function writePlayer1Move(bytes32 hashedPlayer1Move, bytes32 passPlayer1) public returns(bool success) {
+        Bet betPlayer1 = player1Move(passPlayer1, betPlayer1);
+        bytes32 gameID;
+        betStructs[gameID].betPlayer1 = Bet(betPlayer1);
+        return true;
+    }
+        
+    function hashPlayer2Move(bytes32 passPlayer2, Bet betPlayer2) public pure returns(bytes32 hashedPlayer2Move) {
+        return keccak256(passPlayer2, betPlayer2);
+    }
+    
+    function player2Move(bytes32 passPlayer2, Bet betPlayer2) public view returns(uint) {
+        bytes32 hashedPlayer2Move = hashPlayer2Move(passPlayer2, betPlayer2);
+        bytes32 gameID;
         require(betStructs[gameID].player2 == msg.sender);
         require(Bet(betPlayer2) == Bet.ROCK || Bet(betPlayer2) == Bet.PAPER || Bet(betPlayer2) == Bet.SCISSORS);
         require(betStructs[gameID].playersNextMoveDeadline > block.number);
         betStructs[gameID].betPlayer2 = Bet(betPlayer2);
-        LogPlayer2Move(msg.sender, betPlayer2);
+        return true;
+    }
+    
+    function writePlayer2Move(bytes32 hashedPlayer2Move, bytes32 passPlayer2) public returns(bool success) {
+        Bet betPlayer2 = player2Move(passPlayer2, betPlayer2);
+        bytes32 gameID;
+        betStructs[gameID].betPlayer2 = Bet(betPlayer2);
         return true;
     }
     
@@ -105,19 +126,24 @@ contract RockPaperScissors {
             (betStructs[gameID].betPlayer2 == Bet.SCISSORS && betStructs[gameID].betPlayer1 == Bet.PAPER)||
             (betStructs[gameID].betPlayer2 == Bet.ROCK && betStructs[gameID].betPlayer1 == Bet.SCISSORS)||
             (betStructs[gameID].betPlayer2 == Bet.PAPER && betStructs[gameID].betPlayer1 == Bet.ROCK)||
-            (betStructs[gameID].betPlayer2 == Bet.SCISSORS && betStructs[gameID].betPlayer1 == Bet.PAPER)) return 2;  
+            (betStructs[gameID].betPlayer2 == Bet.SCISSORS && betStructs[gameID].betPlayer1 == Bet.PAPER)) return 2; 
+//Never leave an implicit else. You either use an if-else clause or use “assert” in if-if clauses            
         assert(false);
     }
     
     function awardWinner(bytes32 passPlayer1, bytes32 passPlayer2) public returns(bool success) {
         uint winningPlayer = playBet(passPlayer1, passPlayer2);
         bytes32 gameID;
-        address winner;
         if (winningPlayer == 1) {
             winner = betStructs[gameID].player1;
-        } else {
+// never leave an implicit else. Here it is explicit:
+        } else if (winningPlayer == 2) {
             winner = betStructs[gameID].player2;
-        } 
+        } else {
+// I am proving you that I know there is no other possibility
+            assert(false);
+        }
+        address winner;
         betStructs[gameID].winner = winner;
         betStructs[gameID].playersNextMoveDeadline = 0;
         LogAwardWinner(msg.sender, winner);
