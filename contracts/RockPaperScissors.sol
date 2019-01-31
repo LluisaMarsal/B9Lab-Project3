@@ -79,20 +79,9 @@ contract RockPaperScissors {
         return keccak256(passPlayer2, betPlayer2);
     }
     
-    function writePlayer1HashedMove(bytes32 hashedPlayer1Move, bytes32 gameID) public view returns(bool success) {
-        require(hashedPlayer1Move != 0);
-        require(betStructs[gameID].playersNextMoveDeadline > block.number);
-        return true;
-    }
-        
-    function writePlayer2HashedMove(bytes32 hashedPlayer2Move, bytes32 gameID) public view returns(bool success) {
-        require(hashedPlayer2Move != 0);
-        require(betStructs[gameID].playersNextMoveDeadline > block.number);
-        return true;
-    }
-    
     function writePlayer1Move(bytes32 passPlayer1, Bet betPlayer1, bytes32 gameID) public returns(bool success) {
         bytes32 hashedPlayer1Move = hashPlayer1Move(passPlayer1, betPlayer1);
+        require(hashedPlayer1Move != 0);
         require(betStructs[gameID].playersNextMoveDeadline > block.number);
         require(betStructs[gameID].player1 == msg.sender);
         require(Bet(betPlayer1) == Bet.ROCK || Bet(betPlayer1) == Bet.PAPER || Bet(betPlayer1) == Bet.SCISSORS);
@@ -102,6 +91,7 @@ contract RockPaperScissors {
     
     function writePlayer2Move(bytes32 passPlayer2, Bet betPlayer2, bytes32 gameID) public returns(bool success) {
         bytes32 hashedPlayer2Move = hashPlayer2Move(passPlayer2, betPlayer2);
+        require(hashedPlayer2Move != 0);
         require(betStructs[gameID].playersNextMoveDeadline > block.number);
         require(betStructs[gameID].player2 == msg.sender);
         require(Bet(betPlayer2) == Bet.ROCK || Bet(betPlayer2) == Bet.PAPER || Bet(betPlayer2) == Bet.SCISSORS);
