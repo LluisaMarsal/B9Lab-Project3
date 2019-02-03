@@ -38,8 +38,8 @@ contract RockPaperScissors {
         owner = msg.sender;
     }
     
-    function getGameID(bytes32 passPlayer1, bytes32 passPlayer2) public pure returns(bytes32 gameID) {
-        return keccak256(passPlayer1, passPlayer2);
+    function getGameID(bytes32 passCreateBet, address player1) public pure returns(bytes32 gameID) {
+        return keccak256(passCreateBet, player1);
     }
     
     function createBet(bytes32 gameID, address player2, uint numberOfBlocks) public payable returns(bool success) {
@@ -99,8 +99,8 @@ contract RockPaperScissors {
         return true;
     }
     
-    function playBet(bytes32 passPlayer1, bytes32 passPlayer2) public view returns(uint winningPlayer) {
-        bytes32 gameID = getGameID(passPlayer1, passPlayer2);
+    function playBet(bytes32 passCreateBet, address player1) public view returns(uint winningPlayer) {
+        bytes32 gameID = getGameID(passCreateBet, player1);
         if (betStructs[gameID].betPlayer1 == betStructs[gameID].betPlayer2) revert();
         if ((betStructs[gameID].betPlayer1 == Bet.PAPER && betStructs[gameID].betPlayer2 == Bet.ROCK)||
             (betStructs[gameID].betPlayer1 == Bet.ROCK && betStructs[gameID].betPlayer2 == Bet.SCISSORS)||
@@ -118,8 +118,8 @@ contract RockPaperScissors {
         assert(false);
     }
     
-    function awardWinner(bytes32 passPlayer1, bytes32 passPlayer2) public returns(bool success) {
-        uint winningPlayer = playBet(passPlayer1, passPlayer2);
+    function awardWinner(bytes32 passCreateBet, address player1) public returns(bool success) {
+        uint winningPlayer = playBet(passCreateBet, player1);
         bytes32 gameID;
         address winner;
         if (winningPlayer == 1) {
