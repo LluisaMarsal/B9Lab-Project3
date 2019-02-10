@@ -42,15 +42,16 @@ contract RockPaperScissors {
     }
     
     function createBet(bytes32 gameID, address player2, uint numberOfBlocks) public payable returns(bool success) {
-        require(betStructs[gameID].player1 == 0);
-        require(betStructs[gameID].amountPlayer1 == 0);
+        BetBox memory b = betStructs[gameID];  
+        require(b.player1 == 0);
+        require(b.amountPlayer1 == 0);
         require(msg.sender != player2); 
         require(numberOfBlocks < maxNumberOfBlocks);
         require(numberOfBlocks > minNumberOfBlocks);
-        betStructs[gameID].player1 = msg.sender;
-        betStructs[gameID].player2 = player2;
-        betStructs[gameID].joinDeadline = block.number + numberOfBlocks;
-        betStructs[gameID].amountPlayer1 = msg.value;
+        b.player1 = msg.sender;
+        b.player2 = player2;
+        b.joinDeadline = block.number + numberOfBlocks;
+        b.amountPlayer1 = msg.value;
         LogCreateBet(msg.sender, msg.value, numberOfBlocks);
         return true;
     }
@@ -74,6 +75,7 @@ contract RockPaperScissors {
     }
     
     function writePlayerHashedMove(bytes32 hashedPlayerMove, bytes32 gameID) public returns(bool success) {
+        require(betStructs[gameID].playersNextMoveDeadline > block.number);
         if (betStructs[gameID].player1 == msg.sender) {
             betStructs[gameID].hashedPlayer1Move = hashedPlayerMove;
         } else if (betStructs[gameID].player2 == msg.sender) {
@@ -86,7 +88,7 @@ contract RockPaperScissors {
 
     function writePlayerMove(bytes32 passPlayer, Bet betPlayer, bytes32 gameID) public returns(bool success) {
         bytes32 hashedPlayerMove = hashPlayerMove(passPlayer, betPlayer);
-        require(Bet(betPlayer) == Bet.ROCK || Bet(betPlayer) == Bet.PAPER || Bet(betPlayer) == Bet.SCISSORS);
+        require(betPlayer == Bet.ROCK || betPlayer == Bet.PAPER || betPlayer == Bet.SCISSORS);
         require(betStructs[gameID].playersNextMoveDeadline > block.number);
         if (betStructs[gameID].player1 == msg.sender && betStructs[gameID].hashedPlayer1Move == hashedPlayerMove) {
             betStructs[gameID].betPlayer1 = betPlayer;
