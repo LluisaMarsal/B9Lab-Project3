@@ -42,7 +42,7 @@ contract RockPaperScissors {
     }
     
     function createBet(bytes32 gameID, address player2, uint numberOfBlocks) public payable returns(bool success) {
-        BetBox memory b = betStructs[gameID];  
+        BetBox storage b = betStructs[gameID];
         require(b.player1 == 0);
         require(b.amountPlayer1 == 0);
         require(msg.sender != player2); 
@@ -57,15 +57,16 @@ contract RockPaperScissors {
     }
     
     function joinBet(bytes32 gameID, uint nextNumberOfBlocks) public payable returns(bool success) {
-        require(betStructs[gameID].amountPlayer2 == 0);
-        require(betStructs[gameID].joinDeadline > block.number);
-        require(betStructs[gameID].player2 == msg.sender); 
-        require(betStructs[gameID].amountPlayer1 == msg.value);
+        BetBox storage b = betStructs[gameID];
+        require(b.amountPlayer2 == 0);
+        require(b.joinDeadline > block.number);
+        require(b.player2 == msg.sender); 
+        require(b.amountPlayer1 == msg.value);
         require(nextNumberOfBlocks < maxNextNumberOfBlocks);
         require(nextNumberOfBlocks > minNextNumberOfBlocks);
-        betStructs[gameID].joinDeadline = 0;
-        betStructs[gameID].playersNextMoveDeadline = block.number + nextNumberOfBlocks;
-        betStructs[gameID].amountPlayer2 = msg.value;
+        b.joinDeadline = 0;
+        b.playersNextMoveDeadline = block.number + nextNumberOfBlocks;
+        b.amountPlayer2 = msg.value;
         LogJoinBet(msg.sender, msg.value, nextNumberOfBlocks);
         return true;
     }
@@ -75,11 +76,12 @@ contract RockPaperScissors {
     }
     
     function writePlayerHashedMove(bytes32 hashedPlayerMove, bytes32 gameID) public returns(bool success) {
-        require(betStructs[gameID].playersNextMoveDeadline > block.number);
-        if (betStructs[gameID].player1 == msg.sender) {
-            betStructs[gameID].hashedPlayer1Move = hashedPlayerMove;
-        } else if (betStructs[gameID].player2 == msg.sender) {
-            betStructs[gameID].hashedPlayer2Move = hashedPlayerMove;
+        BetBox storage b = betStructs[gameID];
+        require(b.playersNextMoveDeadline > block.number);
+        if (b.player1 == msg.sender) {
+            b.hashedPlayer1Move = hashedPlayerMove;
+        } else if (b.player2 == msg.sender) {
+            b.hashedPlayer2Move = hashedPlayerMove;
         } else {
             assert(false);
         }
@@ -88,12 +90,13 @@ contract RockPaperScissors {
 
     function writePlayerMove(bytes32 passPlayer, Bet betPlayer, bytes32 gameID) public returns(bool success) {
         bytes32 hashedPlayerMove = hashPlayerMove(passPlayer, betPlayer);
+        BetBox storage b = betStructs[gameID];
         require(betPlayer == Bet.ROCK || betPlayer == Bet.PAPER || betPlayer == Bet.SCISSORS);
-        require(betStructs[gameID].playersNextMoveDeadline > block.number);
-        if (betStructs[gameID].player1 == msg.sender && betStructs[gameID].hashedPlayer1Move == hashedPlayerMove) {
-            betStructs[gameID].betPlayer1 = betPlayer;
-        } else if (betStructs[gameID].player2 == msg.sender && betStructs[gameID].hashedPlayer2Move == hashedPlayerMove) {
-            betStructs[gameID].betPlayer2 = betPlayer;
+        require(b.playersNextMoveDeadline > block.number);
+        if (b.player1 == msg.sender && b.hashedPlayer1Move == hashedPlayerMove) {
+            b.betPlayer1 = betPlayer;
+        } else if (b.player2 == msg.sender && b.hashedPlayer2Move == hashedPlayerMove) {
+            b.betPlayer2 = betPlayer;
         } else {
             assert(false);
         }
@@ -102,51 +105,54 @@ contract RockPaperScissors {
     
     function playBet(bytes32 passCreateBet, address player1) public view returns(uint winningPlayer) {
         bytes32 gameID = getGameID(passCreateBet, player1);
-        if (betStructs[gameID].betPlayer1 == betStructs[gameID].betPlayer2) revert();
-        if ((betStructs[gameID].betPlayer1 == Bet.PAPER && betStructs[gameID].betPlayer2 == Bet.ROCK)||
-            (betStructs[gameID].betPlayer1 == Bet.ROCK && betStructs[gameID].betPlayer2 == Bet.SCISSORS)||
-            (betStructs[gameID].betPlayer1 == Bet.SCISSORS && betStructs[gameID].betPlayer2 == Bet.PAPER)||
-            (betStructs[gameID].betPlayer1 == Bet.ROCK && betStructs[gameID].betPlayer2 == Bet.SCISSORS)||
-            (betStructs[gameID].betPlayer1 == Bet.PAPER && betStructs[gameID].betPlayer2 == Bet.ROCK)||
-            (betStructs[gameID].betPlayer1 == Bet.SCISSORS && betStructs[gameID].betPlayer2 == Bet.PAPER)) return 1;
-        if ((betStructs[gameID].betPlayer2 == Bet.PAPER && betStructs[gameID].betPlayer1 == Bet.ROCK)||
-            (betStructs[gameID].betPlayer2 == Bet.ROCK && betStructs[gameID].betPlayer1 == Bet.SCISSORS)||
-            (betStructs[gameID].betPlayer2 == Bet.SCISSORS && betStructs[gameID].betPlayer1 == Bet.PAPER)||
-            (betStructs[gameID].betPlayer2 == Bet.ROCK && betStructs[gameID].betPlayer1 == Bet.SCISSORS)||
-            (betStructs[gameID].betPlayer2 == Bet.PAPER && betStructs[gameID].betPlayer1 == Bet.ROCK)||
-            (betStructs[gameID].betPlayer2 == Bet.SCISSORS && betStructs[gameID].betPlayer1 == Bet.PAPER)) return 2; 
+        BetBox storage b = betStructs[gameID];
+        if (b.betPlayer1 == b.betPlayer2) revert();
+        if ((b.betPlayer1 == Bet.PAPER && b.betPlayer2 == Bet.ROCK)||
+            (b.betPlayer1 == Bet.ROCK && b.betPlayer2 == Bet.SCISSORS)||
+            (b.betPlayer1 == Bet.SCISSORS && b.betPlayer2 == Bet.PAPER)||
+            (b.betPlayer1 == Bet.ROCK && b.betPlayer2 == Bet.SCISSORS)||
+            (b.betPlayer1 == Bet.PAPER && b.betPlayer2 == Bet.ROCK)||
+            (b.betPlayer1 == Bet.SCISSORS && b.betPlayer2 == Bet.PAPER)) return 1;
+        if ((b.betPlayer2 == Bet.PAPER && b.betPlayer1 == Bet.ROCK)||
+            (b.betPlayer2 == Bet.ROCK && b.betPlayer1 == Bet.SCISSORS)||
+            (b.betPlayer2 == Bet.SCISSORS && b.betPlayer1 == Bet.PAPER)||
+            (b.betPlayer2 == Bet.ROCK && b.betPlayer1 == Bet.SCISSORS)||
+            (b.betPlayer2 == Bet.PAPER && b.betPlayer1 == Bet.ROCK)||
+            (b.betPlayer2 == Bet.SCISSORS && b.betPlayer1 == Bet.PAPER)) return 2; 
         assert(false);
     }
     
     function awardWinner(bytes32 passCreateBet, address player1, bytes32 gameID) public returns(bool success) {
         uint winningPlayer = playBet(passCreateBet, player1);
+        BetBox storage b = betStructs[gameID];
         address winner;
         if (winningPlayer == 1) {
-            winner = betStructs[gameID].player1;
+            winner = b.player1;
         } else if (winningPlayer == 2) {
-            winner = betStructs[gameID].player2;
+            winner = b.player2;
         } else {
             assert(false);
         }
-        betStructs[gameID].winner = winner;
+        b.winner = winner;
         LogAwardWinner(msg.sender, winner);
         return true;
     }
 
     function awardBetToWinner(bytes32 gameID) public returns(bool success) {
-        require(betStructs[gameID].winner == msg.sender);
-        betStructs[gameID].amountWinner = betStructs[gameID].amountPlayer1 + betStructs[gameID].amountPlayer2;
-        uint amount = betStructs[gameID].amountWinner;
+        BetBox storage b = betStructs[gameID];
+        require(b.winner == msg.sender);
+        b.amountWinner = b.amountPlayer1 + b.amountPlayer2;
+        uint amount = b.amountWinner;
         require(amount != 0);
-        betStructs[gameID].amountWinner = 0;
-        betStructs[gameID].amountPlayer1 = 0;
-        betStructs[gameID].amountPlayer2 = 0;
-        betStructs[gameID].player1 = 0x0;
-        betStructs[gameID].player2 = 0x0;
-        betStructs[gameID].winner = 0x0; 
-        betStructs[gameID].playersNextMoveDeadline = 0;
+        b.amountWinner = 0;
+        b.amountPlayer1 = 0;
+        b.amountPlayer2 = 0;
+        b.player1 = 0x0;
+        b.player2 = 0x0;
+        b.winner = 0x0; 
+        b.playersNextMoveDeadline = 0;
         LogAwardBet(amount, msg.sender);
-        betStructs[gameID].winner.transfer(amount);
+        b.winner.transfer(amount);
         return true;    
     }
 }
