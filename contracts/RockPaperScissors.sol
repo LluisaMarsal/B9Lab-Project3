@@ -32,6 +32,7 @@ contract RockPaperScissors {
     event LogPlayBet(address caller, Bet betPlayer1, Bet betPlayer2);
     event LogAwardWinner (address caller, address winner);
     event LogAwardBet(uint amount, address winner);
+    event LogCancelBet(address caller, uint amount);
     
     function RockPaperScissors() public {
         owner = msg.sender;
@@ -42,31 +43,31 @@ contract RockPaperScissors {
     }
     
     function createBet(bytes32 gameID, address player2, uint numberOfBlocks) public payable returns(bool success) {
-        BetBox storage b = betStructs[gameID];
-        require(b.player1 == 0);
-        require(b.amountPlayer1 == 0);
+        BetBox storage betBox = betStructs[gameID];
+        require(betBox.player1 == 0);
+        require(betBox.amountPlayer1 == 0);
         require(msg.sender != player2); 
         require(numberOfBlocks < maxNumberOfBlocks);
         require(numberOfBlocks > minNumberOfBlocks);
-        b.player1 = msg.sender;
-        b.player2 = player2;
-        b.joinDeadline = block.number + numberOfBlocks;
-        b.amountPlayer1 = msg.value;
+        betBox.player1 = msg.sender;
+        betBox.player2 = player2;
+        betBox.joinDeadline = block.number + numberOfBlocks;
+        betBox.amountPlayer1 = msg.value;
         LogCreateBet(msg.sender, msg.value, numberOfBlocks);
         return true;
     }
     
     function joinBet(bytes32 gameID, uint nextNumberOfBlocks) public payable returns(bool success) {
-        BetBox storage b = betStructs[gameID];
-        require(b.amountPlayer2 == 0);
-        require(b.joinDeadline > block.number);
-        require(b.player2 == msg.sender); 
-        require(b.amountPlayer1 == msg.value);
+        BetBox storage betBox = betStructs[gameID];
+        require(betBox.amountPlayer2 == 0);
+        require(betBox.joinDeadline > block.number);
+        require(betBox.player2 == msg.sender); 
+        require(betBox.amountPlayer1 == msg.value);
         require(nextNumberOfBlocks < maxNextNumberOfBlocks);
         require(nextNumberOfBlocks > minNextNumberOfBlocks);
-        b.joinDeadline = 0;
-        b.playersNextMoveDeadline = block.number + nextNumberOfBlocks;
-        b.amountPlayer2 = msg.value;
+        betBox.joinDeadline = 0;
+        betBox.playersNextMoveDeadline = block.number + nextNumberOfBlocks;
+        betBox.amountPlayer2 = msg.value;
         LogJoinBet(msg.sender, msg.value, nextNumberOfBlocks);
         return true;
     }
@@ -76,12 +77,12 @@ contract RockPaperScissors {
     }
     
     function writePlayerHashedMove(bytes32 hashedPlayerMove, bytes32 gameID) public returns(bool success) {
-        BetBox storage b = betStructs[gameID];
-        require(b.playersNextMoveDeadline > block.number);
-        if (b.player1 == msg.sender) {
-            b.hashedPlayer1Move = hashedPlayerMove;
-        } else if (b.player2 == msg.sender) {
-            b.hashedPlayer2Move = hashedPlayerMove;
+        BetBox storage betBox = betStructs[gameID];
+        require(betBox.playersNextMoveDeadline > block.number);
+        if (betBox.player1 == msg.sender) {
+            betBox.hashedPlayer1Move = hashedPlayerMove;
+        } else if (betBox.player2 == msg.sender) {
+            betBox.hashedPlayer2Move = hashedPlayerMove;
         } else {
             assert(false);
         }
@@ -90,13 +91,13 @@ contract RockPaperScissors {
 
     function writePlayerMove(bytes32 passPlayer, Bet betPlayer, bytes32 gameID) public returns(bool success) {
         bytes32 hashedPlayerMove = hashPlayerMove(passPlayer, betPlayer);
-        BetBox storage b = betStructs[gameID];
+        BetBox storage betBox = betStructs[gameID];
         require(betPlayer == Bet.ROCK || betPlayer == Bet.PAPER || betPlayer == Bet.SCISSORS);
-        require(b.playersNextMoveDeadline > block.number);
-        if (b.player1 == msg.sender && b.hashedPlayer1Move == hashedPlayerMove) {
-            b.betPlayer1 = betPlayer;
-        } else if (b.player2 == msg.sender && b.hashedPlayer2Move == hashedPlayerMove) {
-            b.betPlayer2 = betPlayer;
+        require(betBox.playersNextMoveDeadline > block.number);
+        if (betBox.player1 == msg.sender && betBox.hashedPlayer1Move == hashedPlayerMove) {
+            betBox.betPlayer1 = betPlayer;
+        } else if (betBox.player2 == msg.sender && betBox.hashedPlayer2Move == hashedPlayerMove) {
+            betBox.betPlayer2 = betPlayer;
         } else {
             assert(false);
         }
@@ -105,54 +106,76 @@ contract RockPaperScissors {
     
     function playBet(bytes32 passCreateBet, address player1) public view returns(uint winningPlayer) {
         bytes32 gameID = getGameID(passCreateBet, player1);
-        BetBox storage b = betStructs[gameID];
-        if (b.betPlayer1 == b.betPlayer2) revert();
-        if ((b.betPlayer1 == Bet.PAPER && b.betPlayer2 == Bet.ROCK)||
-            (b.betPlayer1 == Bet.ROCK && b.betPlayer2 == Bet.SCISSORS)||
-            (b.betPlayer1 == Bet.SCISSORS && b.betPlayer2 == Bet.PAPER)||
-            (b.betPlayer1 == Bet.ROCK && b.betPlayer2 == Bet.SCISSORS)||
-            (b.betPlayer1 == Bet.PAPER && b.betPlayer2 == Bet.ROCK)||
-            (b.betPlayer1 == Bet.SCISSORS && b.betPlayer2 == Bet.PAPER)) return 1;
-        if ((b.betPlayer2 == Bet.PAPER && b.betPlayer1 == Bet.ROCK)||
-            (b.betPlayer2 == Bet.ROCK && b.betPlayer1 == Bet.SCISSORS)||
-            (b.betPlayer2 == Bet.SCISSORS && b.betPlayer1 == Bet.PAPER)||
-            (b.betPlayer2 == Bet.ROCK && b.betPlayer1 == Bet.SCISSORS)||
-            (b.betPlayer2 == Bet.PAPER && b.betPlayer1 == Bet.ROCK)||
-            (b.betPlayer2 == Bet.SCISSORS && b.betPlayer1 == Bet.PAPER)) return 2; 
+        BetBox storage betBox = betStructs[gameID];
+        if (betBox.betPlayer1 == betBox.betPlayer2) revert();
+        if ((betBox.betPlayer1 == Bet.PAPER && betBox.betPlayer2 == Bet.ROCK)||
+            (betBox.betPlayer1 == Bet.ROCK && betBox.betPlayer2 == Bet.SCISSORS)||
+            (betBox.betPlayer1 == Bet.SCISSORS && betBox.betPlayer2 == Bet.PAPER)||
+            (betBox.betPlayer1 == Bet.ROCK && betBox.betPlayer2 == Bet.SCISSORS)||
+            (betBox.betPlayer1 == Bet.PAPER && betBox.betPlayer2 == Bet.ROCK)||
+            (betBox.betPlayer1 == Bet.SCISSORS && betBox.betPlayer2 == Bet.PAPER)) return 1;
+        if ((betBox.betPlayer2 == Bet.PAPER && betBox.betPlayer1 == Bet.ROCK)||
+            (betBox.betPlayer2 == Bet.ROCK && betBox.betPlayer1 == Bet.SCISSORS)||
+            (betBox.betPlayer2 == Bet.SCISSORS && betBox.betPlayer1 == Bet.PAPER)||
+            (betBox.betPlayer2 == Bet.ROCK && betBox.betPlayer1 == Bet.SCISSORS)||
+            (betBox.betPlayer2 == Bet.PAPER && betBox.betPlayer1 == Bet.ROCK)||
+            (betBox.betPlayer2 == Bet.SCISSORS && betBox.betPlayer1 == Bet.PAPER)) return 2; 
         assert(false);
     }
-    
-    function awardWinner(bytes32 passCreateBet, address player1, bytes32 gameID) public returns(bool success) {
+
+    function awardWinner(bytes32 passCreateBet, address player1) public returns(bool success) {
         uint winningPlayer = playBet(passCreateBet, player1);
-        BetBox storage b = betStructs[gameID];
+        bytes32 gameID = getGameID(passCreateBet, player1);
+        BetBox storage betBox = betStructs[gameID];
         address winner;
         if (winningPlayer == 1) {
-            winner = b.player1;
+            winner = betBox.player1;
         } else if (winningPlayer == 2) {
-            winner = b.player2;
+            winner = betBox.player2;
         } else {
             assert(false);
         }
-        b.winner = winner;
+        betBox.winner = winner;
         LogAwardWinner(msg.sender, winner);
         return true;
     }
 
     function awardBetToWinner(bytes32 gameID) public returns(bool success) {
-        BetBox storage b = betStructs[gameID];
-        require(b.winner == msg.sender);
-        b.amountWinner = b.amountPlayer1 + b.amountPlayer2;
-        uint amount = b.amountWinner;
+        BetBox storage betBox = betStructs[gameID];
+        require(betBox.winner == msg.sender);
+        betBox.amountWinner = betBox.amountPlayer1 + betBox.amountPlayer2;
+        uint amount = betBox.amountWinner;
         require(amount != 0);
-        b.amountWinner = 0;
-        b.amountPlayer1 = 0;
-        b.amountPlayer2 = 0;
-        b.player1 = 0x0;
-        b.player2 = 0x0;
-        b.winner = 0x0; 
-        b.playersNextMoveDeadline = 0;
+        betBox.amountWinner = 0;
+        betBox.amountPlayer1 = 0;
+        betBox.amountPlayer2 = 0;
+        betBox.player1 = 0x0;
+        betBox.player2 = 0x0;
+        betBox.winner = 0x0; 
+        betBox.playersNextMoveDeadline = 0;
         LogAwardBet(amount, msg.sender);
-        b.winner.transfer(amount);
+        betBox.winner.transfer(amount);
         return true;    
+    }
+    
+    function cancelBet(bytes32 gameID) public returns(bool success) {
+        BetBox storage betBox = betStructs[gameID];
+        require(betBox.player1 == msg.sender || betBox.player2 == msg.sender);
+        require(betBox.betPlayer1 == Bet.ROCK && betBox.betPlayer2 == Bet.ROCK|| 
+                betBox.betPlayer1 == Bet.PAPER && betBox.betPlayer2 == Bet.PAPER|| 
+                betBox.betPlayer1 == Bet.SCISSORS && betBox.betPlayer1 == Bet.SCISSORS);
+        require(betBox.amountPlayer1 != 0);
+        require(betBox.amountPlayer2 != 0);
+        require(betBox.amountPlayer1 == betBox.amountPlayer2);
+        uint amount = betBox.amountPlayer1; 
+        betBox.amountPlayer1 = 0;
+        betBox.amountPlayer2 = 0;
+        betBox.player1 = 0x0;
+        betBox.player2 = 0x0;
+        betBox.playersNextMoveDeadline = 0;
+        LogCancelBet(msg.sender, amount);
+        betBox.player1.transfer(amount);
+        betBox.player2.transfer(amount);
+        return true;
     }
 }
