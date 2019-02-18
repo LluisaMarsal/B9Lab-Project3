@@ -76,10 +76,10 @@ contract RockPaperScissors {
     function hashPlayerMove(bytes32 passPlayer, Bet betPlayer) public pure returns(bytes32 hashedPlayerMove) {
         return keccak256(passPlayer, betPlayer);
     }
-    
+
     function writePlayerHashedMove(bytes32 gameID, bytes32 hashedPlayerMove) public returns(bool success) {
         BetBox storage betBox = betStructs[gameID];
-        require(betBox.playersNextMoveDeadline > block.number);
+        require(betBox.playersNextMoveDeadline > block.number - 10);
         if (betBox.player1 == msg.sender) {
             betBox.hashedPlayer1Move = hashedPlayerMove;
         } else if (betBox.player2 == msg.sender) {
@@ -135,6 +135,8 @@ contract RockPaperScissors {
             winner = betBox.player1;
         } else if (winningPlayer == 2) {
             winner = betBox.player2;
+        } else if (winningPlayer == 0) {
+            assert(false);
         } else {
             assert(false);
         }
@@ -154,9 +156,10 @@ contract RockPaperScissors {
         betBox.amountPlayer2 = 0;
         betBox.player1 = 0x0;
         betBox.player2 = 0x0;
+        betBox.winner = 0x0;
         betBox.playersNextMoveDeadline = 0;
         LogAwardBet(gameID, amount, msg.sender);
-        betBox.winner.transfer(amount);
+        msg.sender.transfer(amount);
         return true;    
     }
     
@@ -171,6 +174,8 @@ contract RockPaperScissors {
         uint amount = (betBox.amountPlayer1 + betBox.amountPlayer2) / 2;
         betBox.amountPlayer1 = 0;
         betBox.amountPlayer2 = 0;
+        betBox.player1 = 0x0;
+        betBox.player2 = 0x0;
         betBox.playersNextMoveDeadline = 0;
         LogCancelBet(gameID, amount, msg.sender);
         msg.sender.transfer(amount);
