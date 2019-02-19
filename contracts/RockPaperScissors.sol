@@ -50,6 +50,7 @@ contract RockPaperScissors {
         require(msg.sender != player2); 
         require(numberOfBlocks < maxNumberOfBlocks);
         require(numberOfBlocks > minNumberOfBlocks);
+        require(block.number > 10);
         betBox.player1 = msg.sender;
         betBox.player2 = player2;
         betBox.joinDeadline = block.number + numberOfBlocks;
@@ -76,10 +77,10 @@ contract RockPaperScissors {
     function hashPlayerMove(bytes32 passPlayer, Bet betPlayer) public pure returns(bytes32 hashedPlayerMove) {
         return keccak256(passPlayer, betPlayer);
     }
-
+    
     function writePlayerHashedMove(bytes32 gameID, bytes32 hashedPlayerMove) public returns(bool success) {
         BetBox storage betBox = betStructs[gameID];
-        require(betBox.playersNextMoveDeadline > block.number - 10);
+        require(betBox.playersNextMoveDeadline -10 > block.number);
         if (betBox.player1 == msg.sender) {
             betBox.hashedPlayer1Move = hashedPlayerMove;
         } else if (betBox.player2 == msg.sender) {
@@ -95,7 +96,7 @@ contract RockPaperScissors {
         bytes32 hashedPlayerMove = hashPlayerMove(passPlayer, betPlayer);
         BetBox storage betBox = betStructs[gameID];
         require(betPlayer == Bet.ROCK || betPlayer == Bet.PAPER || betPlayer == Bet.SCISSORS);
-        require(betBox.playersNextMoveDeadline >= block.number);
+        require(betBox.playersNextMoveDeadline + 10 < block.number);
         if (betBox.player1 == msg.sender && betBox.hashedPlayer1Move == hashedPlayerMove) {
             betBox.betPlayer1 = betPlayer;
         } else if (betBox.player2 == msg.sender && betBox.hashedPlayer2Move == hashedPlayerMove) {
@@ -172,10 +173,20 @@ contract RockPaperScissors {
         require(betBox.amountPlayer1 != 0);
         require(betBox.amountPlayer2 != 0);
         uint amount = (betBox.amountPlayer1 + betBox.amountPlayer2) / 2;
-        betBox.amountPlayer1 = 0;
-        betBox.amountPlayer2 = 0;
-        betBox.player1 = 0x0;
-        betBox.player2 = 0x0;
+        if (betBox.amountPlayer1 == amount) {
+            betBox.amountPlayer1 = 0;
+        } else if (betBox.amountPlayer2 == amount) {
+            betBox.amountPlayer2 = 0;
+        } else {
+            assert(false);
+        }
+        if (betBox.player1 == msg.sender) {
+            betBox.player1 = 0x0;
+        } else if (betBox.player2 == msg.sender) {
+            betBox.player2 = 0x0;
+        } else {
+            assert(false);
+        }
         betBox.playersNextMoveDeadline = 0;
         LogCancelBet(gameID, amount, msg.sender);
         msg.sender.transfer(amount);
