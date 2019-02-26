@@ -62,7 +62,7 @@ contract RockPaperScissors {
         require(blockDifferenceToPassBets > minblockDifferenceToPassBets);
         require(blockDifferenceToAward < maxblockDifferenceToAward);
         require(blockDifferenceToAward > minblockDifferenceToAward);
-        require(block.number > 10);
+        require((numberOfBlocks + 10 < nextNumberOfBlocks) && (nextNumberOfBlocks + 10 < blockDifferenceToPassBets) && (blockDifferenceToPassBets + 10 < blockDifferenceToAward)); 
         betBox.player1 = msg.sender;
         betBox.player2 = player2;
         betBox.joinDeadline = block.number + numberOfBlocks;
@@ -187,16 +187,18 @@ contract RockPaperScissors {
                 ((betBox.betPlayer1 == Bet.SCISSORS) && (betBox.betPlayer2 == Bet.SCISSORS)));
         uint amountPlayer1 = betBox.amountPlayer1;
         uint amountPlayer2 = betBox.amountPlayer2;
-        uint amount = (amountPlayer1 + amountPlayer2) / 2;
+        uint amount;
         if (betBox.player1 == msg.sender) {
             betBox.player1 = 0x0;
-            betBox.amountPlayer1 = 0;
+            amount = amountPlayer1;
+            amountPlayer1 = 0;
         } else if (betBox.player2 == msg.sender) {
             betBox.player2 = 0x0;
-            betBox.amountPlayer2 = 0;
+            amount = amountPlayer2;
+            amountPlayer2 = 0;
         } else {
             assert(false);
-        }      
+        }   
         betBox.playersNextMoveDeadline = 0;
         betBox.writeHashedBetDeadline = 0;
         betBox.writeClearBetDeadline = 0; 
