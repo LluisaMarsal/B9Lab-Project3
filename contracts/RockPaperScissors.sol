@@ -7,10 +7,12 @@ contract RockPaperScissors {
     uint constant minNumberOfBlocks = 1 hours / 15;
     uint constant maxNextNumberOfBlocks = 1 days / 15;
     uint constant minNextNumberOfBlocks = 1 hours / 15;
-    uint constant maxblockDifferenceToPassBets = 1 days / 15;
-    uint constant minblockDifferenceToPassBets = 1 hours / 15;
-    uint constant maxblockDifferenceToAward = 1 days / 15;
-    uint constant minblockDifferenceToAward = 1 hours / 15;
+    uint constant maxBlockDifferenceToPassBets = 1 days / 15;
+    uint constant minBlockDifferenceToPassBets = 1 hours / 15;
+    uint constant maxBlockDifferenceToAward = 1 days / 15;
+    uint constant minBlockDifferenceToAward = 1 hours / 15;
+    uint constant maxBlockWindowBetweenDeadlines = 20; 
+    uint constant minBlockWindowBetweenDeadlines = 10;
     
     enum Bet {NULL, ROCK, PAPER, SCISSORS}
     
@@ -33,7 +35,7 @@ contract RockPaperScissors {
     
     mapping (bytes32 => BetBox) public betStructs; 
     
-    event LogCreateBet(bytes32 gameID, address caller, uint amount, uint numberOfBlocks, uint nextNumberOfBlocks, uint blockDifferenceToPassBets, uint blockDifferenceToAward);
+    event LogCreateBet(bytes32 gameID, address caller, uint amount, uint numberOfBlocks, uint nextNumberOfBlocks, uint blockDifferenceToPassBets, uint blockDifferenceToAward, uint blockWindowBetweenDeadlines);
     event LogJoinBet(bytes32 gameID, address caller, uint amount);
     event LogWritePlayerHashedMove(bytes32 gameID, bytes32 hashedPlayerMove, address caller);
     event LogWritePlayerMove(bytes32 gameID, bytes32 passPlayer, Bet betPlayer, address caller);
@@ -49,7 +51,7 @@ contract RockPaperScissors {
         return keccak256(passCreateBet, player1);
     }
     
-    function createBet(bytes32 gameID, address player2, uint numberOfBlocks, uint nextNumberOfBlocks, uint blockDifferenceToPassBets, uint blockDifferenceToAward) public payable returns(bool success) {
+    function createBet(bytes32 gameID, address player2, uint numberOfBlocks, uint nextNumberOfBlocks, uint blockDifferenceToPassBets, uint blockDifferenceToAward, uint blockWindowBetweenDeadlines) public payable returns(bool success) {
         BetBox storage betBox = betStructs[gameID];
         require(betBox.player1 == 0);
         require(betBox.amountPlayer1 == 0);
@@ -58,11 +60,15 @@ contract RockPaperScissors {
         require(numberOfBlocks > minNumberOfBlocks);
         require(nextNumberOfBlocks < maxNextNumberOfBlocks);
         require(nextNumberOfBlocks > minNextNumberOfBlocks);
-        require(blockDifferenceToPassBets < maxblockDifferenceToPassBets);
-        require(blockDifferenceToPassBets > minblockDifferenceToPassBets);
-        require(blockDifferenceToAward < maxblockDifferenceToAward);
-        require(blockDifferenceToAward > minblockDifferenceToAward);
-        require((numberOfBlocks + 10 < nextNumberOfBlocks) && (nextNumberOfBlocks + 10 < blockDifferenceToPassBets) && (blockDifferenceToPassBets + 10 < blockDifferenceToAward)); 
+        require(blockDifferenceToPassBets < maxBlockDifferenceToPassBets);
+        require(blockDifferenceToPassBets > minBlockDifferenceToPassBets);
+        require(blockDifferenceToAward < maxBlockDifferenceToAward);
+        require(blockDifferenceToAward > minBlockDifferenceToAward);
+        require(blockWindowBetweenDeadlines < maxBlockWindowBetweenDeadlines);
+        require(blockWindowBetweenDeadlines > minBlockWindowBetweenDeadlines);
+        require((numberOfBlocks + blockWindowBetweenDeadlines) < nextNumberOfBlocks);
+        require((nextNumberOfBlocks + blockWindowBetweenDeadlines) < blockDifferenceToPassBets);
+        require((blockDifferenceToPassBets + blockWindowBetweenDeadlines) < blockDifferenceToAward); 
         betBox.player1 = msg.sender;
         betBox.player2 = player2;
         betBox.joinDeadline = block.number + numberOfBlocks;
@@ -70,7 +76,7 @@ contract RockPaperScissors {
         betBox.writeHashedBetDeadline = block.number + blockDifferenceToPassBets;
         betBox.writeClearBetDeadline = block.number + blockDifferenceToAward;
         betBox.amountPlayer1 = msg.value;
-        LogCreateBet(gameID, msg.sender, msg.value, numberOfBlocks, nextNumberOfBlocks, blockDifferenceToPassBets, blockDifferenceToAward);
+        LogCreateBet(gameID, msg.sender, msg.value, numberOfBlocks, nextNumberOfBlocks, blockDifferenceToPassBets, blockDifferenceToAward, blockWindowBetweenDeadlines);
         return true;
     }
     
@@ -191,14 +197,14 @@ contract RockPaperScissors {
         if (betBox.player1 == msg.sender) {
             betBox.player1 = 0x0;
             amount = amountPlayer1;
-            amountPlayer1 = 0;
+            betBox.amountPlayer1 = 0;
         } else if (betBox.player2 == msg.sender) {
             betBox.player2 = 0x0;
             amount = amountPlayer2;
-            amountPlayer2 = 0;
+            betBox.amountPlayer2 = 0;
         } else {
             assert(false);
-        }   
+        }      
         betBox.playersNextMoveDeadline = 0;
         betBox.writeHashedBetDeadline = 0;
         betBox.writeClearBetDeadline = 0; 
