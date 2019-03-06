@@ -72,9 +72,9 @@ contract RockPaperScissors {
         betBox.player1 = msg.sender;
         betBox.player2 = player2;
         betBox.joinDeadline = block.number + numberOfBlocks;
-        betBox.playersNextMoveDeadline = block.number + nextNumberOfBlocks;
-        betBox.writeHashedBetDeadline = block.number + blockDifferenceToPassBets;
-        betBox.writeClearBetDeadline = block.number + blockDifferenceToAward;
+        betBox.playersNextMoveDeadline = betBox.joinDeadline + nextNumberOfBlocks;
+        betBox.writeHashedBetDeadline = betBox.playersNextMoveDeadline + blockDifferenceToPassBets;
+        betBox.writeClearBetDeadline = betBox.writeHashedBetDeadline + blockDifferenceToAward;
         betBox.amountPlayer1 = msg.value;
         LogCreateBet(gameID, msg.sender, msg.value, numberOfBlocks, nextNumberOfBlocks, blockDifferenceToPassBets, blockDifferenceToAward, blockWindowBetweenDeadlines);
         return true;
