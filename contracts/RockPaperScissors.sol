@@ -30,7 +30,6 @@ contract RockPaperScissors {
        uint firstDeadline; 
        uint secondDeadline;
        uint thirdDeadline;
-       uint fourthDeadline; 
     }
     
     mapping (bytes32 => BetBox) public betStructs; 
@@ -78,7 +77,6 @@ contract RockPaperScissors {
         betBox.secondDeadline = movingDeadline;
         movingDeadline += blockDifferenceToPassBets;
         betBox.thirdDeadline = movingDeadline;
-        movingDeadline += blockDifferenceToAward;
         LogCreateBet(gameID, msg.sender, msg.value, numberOfBlocks, nextNumberOfBlocks, blockDifferenceToPassBets, blockDifferenceToAward, blockWindowBetweenDeadlines);
         return true;
     }
@@ -170,7 +168,6 @@ contract RockPaperScissors {
     function awardBetToWinner(bytes32 gameID) public returns(bool success) {
         BetBox storage betBox = betStructs[gameID];
         require(betBox.winner == msg.sender);
-        require(betBox.fourthDeadline > block.number);
         betBox.amountWinner = betBox.amountPlayer1 + betBox.amountPlayer2;
         uint amount = betBox.amountWinner;
         require(amount != 0);
@@ -182,7 +179,6 @@ contract RockPaperScissors {
         betBox.winner = 0x0;
         betBox.secondDeadline = 0;
         betBox.thirdDeadline = 0;
-        betBox.fourthDeadline = 0; 
         LogAwardBet(gameID, amount, msg.sender);
         msg.sender.transfer(amount);
         return true;    
@@ -207,10 +203,9 @@ contract RockPaperScissors {
             betBox.amountPlayer2 = 0;
         } else {
             assert(false);
-        }       
+        }      
         betBox.secondDeadline = 0;
         betBox.thirdDeadline = 0;
-        betBox.fourthDeadline = 0; 
         LogCancelBet(gameID, amount, msg.sender);
         msg.sender.transfer(amount);
         return true;
