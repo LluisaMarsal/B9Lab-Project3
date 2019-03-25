@@ -61,9 +61,6 @@ contract RockPaperScissors {
         require(blockDifferenceToPassBets > minBlockDifferenceToPassBets);
         require(blockDifferenceToAward < maxBlockDifferenceToAward);
         require(blockDifferenceToAward > minBlockDifferenceToAward);
-        require(numberOfBlocks < nextNumberOfBlocks);
-        require(nextNumberOfBlocks < blockDifferenceToPassBets);
-        require(blockDifferenceToPassBets < blockDifferenceToAward); 
         betBox.player1 = msg.sender;
         betBox.player2 = player2;
         betBox.amountPlayer1 = msg.value;
